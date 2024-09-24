@@ -38,6 +38,9 @@ pub enum RuleConfigurationError {
     /// When a rule can only be used internally by darklua. The string is the rule name
     /// (this error should not surface to external consumers)
     InternalUsageOnly(String),
+    /// When a property is associated with something else than an expected libraries. The
+    /// string is the property name.
+    LibrariesExpected(String),
 }
 
 fn enumerate_properties(properties: &[String]) -> String {
@@ -98,6 +101,9 @@ impl fmt::Display for RuleConfigurationError {
                     "usage of rule `{}` is reserved for darklua internal processing",
                     rule_name
                 )
+            }
+            LibrariesExpected(property) => {
+                write!(f, "list of library expected for field `{}`", property)
             }
         }
     }
