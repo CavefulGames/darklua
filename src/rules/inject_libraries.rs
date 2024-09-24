@@ -138,6 +138,9 @@ impl RuleConfiguration for InjectLibraries {
                 "libraries" => {
                     self.libraries = value.expect_libraries(&key)?;
                 }
+                "path" => {
+                    self.path = PathBuf::from(value.expect_string(&key)?);
+                }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
         }
