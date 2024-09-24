@@ -33,6 +33,7 @@ mod rule_property;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
+mod remove_duplicated_keys;
 
 pub use append_text_comment::*;
 pub use call_parens::*;
@@ -64,6 +65,7 @@ pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
+pub use remove_duplicated_keys::*;
 
 use crate::nodes::Block;
 use crate::Resources;
@@ -220,6 +222,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveNilDeclaration>::default(),
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
+		Box::<RemoveDuplicatedKeys>::default(),
         Box::<InjectLibraries>::default(),
         Box::<RemoveContinue>::default(),
         Box::<RemoveIfExpression>::default(),
@@ -251,6 +254,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_VARIABLE_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
+		REMOVE_DUPLICATED_KEYS_RULE_NAME,
         INJECT_LIBRARIES_RULE_NAME,
         REMOVE_CONTINUE_RULE_NAME,
         REMOVE_IF_EXPRESSION_RULE_NAME,
@@ -287,6 +291,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
+			REMOVE_DUPLICATED_KEYS_RULE_NAME => Box::<RemoveDuplicatedKeys>::default(),
             INJECT_LIBRARIES_RULE_NAME => Box::<InjectLibraries>::default(),
             REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
             REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
