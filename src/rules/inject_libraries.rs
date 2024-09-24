@@ -176,7 +176,16 @@ mod test {
     fn configure_with_extra_field_error() {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
-            rule: 'inject_libraries',
+            rule: "inject_libraries",
+            require_mode: {
+                name: "roblox"
+            },
+            libraries: [
+                {
+                    name: "task",
+                    path: "task.luau"
+                }
+            ],
             prop: "something",
         }"#,
         );

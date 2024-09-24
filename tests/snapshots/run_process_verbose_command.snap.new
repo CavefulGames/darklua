@@ -1,0 +1,9 @@
+---
+source: tests/cli.rs
+assertion_line: 94
+expression: content
+---
+ INFO > using default configuration
+thread 'main' panicked at src/rules/inject_libraries.rs:80:14:
+Project path is required
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
