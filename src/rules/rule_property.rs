@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use super::{require::PathRequireMode, Library, RequireMode, RobloxRequireMode, RuleConfigurationError};
+use super::{
+    require::PathRequireMode, Library, RequireMode, RobloxRequireMode, RuleConfigurationError,
+};
 
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
@@ -18,7 +20,7 @@ pub enum RulePropertyValue {
     Float(f64),
     StringList(Vec<String>),
     RequireMode(RequireMode),
-	Libraries(Vec<Library>),
+    Libraries(Vec<Library>),
     None,
 }
 
@@ -84,13 +86,16 @@ impl RulePropertyValue {
         }
     }
 
-	pub(crate) fn expect_libraries(self, key: &str) -> Result<Vec<Library>, RuleConfigurationError> {
-		if let Self::Libraries(value) = self {
-			Ok(value)
-		} else {
-			Err(RuleConfigurationError::LibrariesExpected(key.to_owned()))
-		}
-	}
+    pub(crate) fn expect_libraries(
+        self,
+        key: &str,
+    ) -> Result<Vec<Library>, RuleConfigurationError> {
+        if let Self::Libraries(value) = self {
+            Ok(value)
+        } else {
+            Err(RuleConfigurationError::LibrariesExpected(key.to_owned()))
+        }
+    }
 }
 
 impl From<bool> for RulePropertyValue {
