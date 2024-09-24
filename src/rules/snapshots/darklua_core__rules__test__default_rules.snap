@@ -17,6 +17,7 @@ expression: rules
   "rename_variables",
   "remove_function_call_parens",
   "inject_libraries",
+  "inject_libraries",
   "remove_continue",
   "remove_if_expression"
 ]
