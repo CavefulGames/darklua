@@ -221,8 +221,8 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
         Box::<InjectLibraries>::default(),
-		Box::<RemoveContinue>::default(),
-		Box::<RemoveIfExpression>::default()
+        Box::<RemoveContinue>::default(),
+        Box::<RemoveIfExpression>::default(),
     ]
 }
 
@@ -252,8 +252,8 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
         INJECT_LIBRARIES_RULE_NAME,
-		REMOVE_CONTINUE_RULE_NAME,
-		REMOVE_IF_EXPRESSION_RULE_NAME,
+        REMOVE_CONTINUE_RULE_NAME,
+        REMOVE_IF_EXPRESSION_RULE_NAME,
     ]
 }
 
@@ -288,8 +288,8 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             INJECT_LIBRARIES_RULE_NAME => Box::<InjectLibraries>::default(),
-			REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
-			REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
+            REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
+            REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
