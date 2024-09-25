@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
-use std::{fs, io};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::{fs, io};
 
 use crate::nodes::{
-    Arguments, Block, Expression, FunctionCall, LocalAssignStatement, Prefix, StringExpression, TypedIdentifier
+    Arguments, Block, Expression, FunctionCall, LocalAssignStatement, Prefix, StringExpression,
+    TypedIdentifier,
 };
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
@@ -25,16 +26,60 @@ pub struct Library {
 }
 
 pub const INJECT_LIBRARIES_RULE_NAME: &str = "inject_libraries";
-
+const DEFAULT_LIBRARIES_PATH: &str = "_DARKLUA_libs";
 /// A rule that removes trailing `nil` in local assignments.
 #[derive(Debug, PartialEq, Eq)]
 pub struct InjectLibraries {
     require_mode: RequireMode,
     libraries: Vec<Library>,
     path: PathBuf,
+    no_hash: bool,
 }
 
-const DEFAULT_LIBRARIES_PATH: &str = "_DARKLUA_libs";
+impl InjectLibraries {
+    fn get_require_path(&self, libs_path: &Path, path: &Path, context: &Context) -> PathBuf {
+        let lib_file_stem = path
+            .file_stem()
+            .map(|x| OsString::from(x).into_string().unwrap())
+            .unwrap();
+        let is_lib_dir = path.is_dir();
+        let lib_file_ext: Option<String> = if is_lib_dir {
+            None
+        } else {
+            path.extension()
+                .map(|x| OsString::from(x).into_string().unwrap())
+        };
+
+        let hash_identifier = if self.no_hash {
+            "".to_string()
+        } else {
+            let hash = blake3::hash(path.to_string_lossy().as_bytes());
+            hex::encode(&hash.as_bytes()[..8])
+        };
+
+        let lib_path = if let Some(ext) = lib_file_ext {
+            libs_path.join(format!("{}{}.{}", lib_file_stem, hash_identifier, ext))
+        } else {
+            libs_path.join(lib_file_stem + hash_identifier.as_str())
+        };
+
+        if is_lib_dir {
+            copy_dir_all(path, lib_path.as_path()).unwrap();
+        } else {
+            fs::copy(path, lib_path.as_path()).unwrap();
+        }
+
+        let base_path = context
+            .path
+            .as_path()
+            .parent()
+            .expect("Could not find parent path of the source");
+        let mut relative_path =
+            diff_paths(lib_path.as_path(), base_path).expect("Could not resolve a path");
+        relative_path.set_extension("");
+        relative_path
+    }
+}
 
 impl Default for InjectLibraries {
     fn default() -> Self {
@@ -42,6 +87,7 @@ impl Default for InjectLibraries {
             require_mode: RequireMode::Path(Default::default()),
             libraries: Vec::new(),
             path: PathBuf::from_str(DEFAULT_LIBRARIES_PATH).unwrap(),
+            no_hash: false,
         }
     }
 }
@@ -60,46 +106,6 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> 
     Ok(())
 }
 
-fn get_require_path(libs_path: &Path, path: &Path, context: &Context) -> PathBuf {
-    let lib_file_stem = path
-        .file_stem()
-        .map(|x| OsString::from(x).into_string().unwrap())
-        .unwrap();
-    let is_lib_dir = path.is_dir();
-    let lib_file_ext: Option<String> = if is_lib_dir {
-        None
-    } else {
-        path
-            .extension()
-            .map(|x| OsString::from(x).into_string().unwrap())
-    };
-
-    let hash = blake3::hash(path.to_string_lossy().as_bytes());
-    let hash_hex = hex::encode(&hash.as_bytes()[..8]);
-
-    let lib_path = if let Some(ext) = lib_file_ext {
-        libs_path.join(format!("{}{}.{}", lib_file_stem, hash_hex, ext))
-    } else {
-        libs_path.join(lib_file_stem + hash_hex.as_str())
-    };
-
-    if is_lib_dir {
-        copy_dir_all(path, lib_path.as_path()).unwrap();
-    } else {
-        fs::copy(path, lib_path.as_path()).unwrap();
-    }
-    
-    let base_path = context
-        .path
-        .as_path()
-        .parent()
-        .expect("Could not find parent path of the source");
-    let mut relative_path =
-        diff_paths(lib_path.as_path(), base_path).expect("Could not resolve a path");
-    relative_path.set_extension("");
-    relative_path
-}
-
 impl Rule for InjectLibraries {
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         let project_path = context
@@ -111,9 +117,10 @@ impl Rule for InjectLibraries {
         match self.require_mode.to_owned() {
             RequireMode::Path(_) => {
                 for lib in &self.libraries {
-                    let exp: Expression = if let Some(lib_path) = lib.path.to_owned() {
+                    let value: Expression = if let Some(lib_path) = lib.path.to_owned() {
                         let string_exp = StringExpression::from_value(
-                            get_require_path(&libs_path, &lib_path, context).to_slash_lossy(),
+                            self.get_require_path(&libs_path, &lib_path, context)
+                                .to_slash_lossy(),
                         );
                         let require_arg = Arguments::String(string_exp);
 
@@ -126,7 +133,7 @@ impl Rule for InjectLibraries {
                     };
                     let local_assignment = LocalAssignStatement::new(
                         vec![TypedIdentifier::new(lib.name.as_str())],
-                        vec![exp],
+                        vec![value],
                     );
                     block.insert_statement(0, local_assignment);
                 }
@@ -137,11 +144,13 @@ impl Rule for InjectLibraries {
                     .map_err(|err| err.to_string())?;
                 for lib in &self.libraries {
                     let exp: Option<Expression> = if let Some(lib_path) = lib.path.to_owned() {
-                        let require_path = get_require_path(&libs_path, &lib_path, context);
+                        let require_path = self.get_require_path(&libs_path, &lib_path, context);
                         if let Some(require_arg) = require_mode
                             .generate_require(
                                 require_path.as_path(),
-                                &RequireMode::Path(PathRequireMode::new(require_path.to_slash_lossy())),
+                                &RequireMode::Path(PathRequireMode::new(
+                                    require_path.to_slash_lossy(),
+                                )),
                                 context,
                             )
                             .unwrap()
@@ -158,7 +167,7 @@ impl Rule for InjectLibraries {
                     };
                     let value = match exp {
                         Some(exp) => exp,
-                        None => Expression::nil()
+                        None => Expression::nil(),
                     };
                     let local_assignment = LocalAssignStatement::new(
                         vec![TypedIdentifier::new(lib.name.as_str())],
@@ -186,6 +195,9 @@ impl RuleConfiguration for InjectLibraries {
                 }
                 "path" => {
                     self.path = PathBuf::from(value.expect_string(&key)?);
+                }
+                "no_hash" => {
+                    self.no_hash = value.expect_bool(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }

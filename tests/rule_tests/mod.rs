@@ -296,6 +296,7 @@ mod convert_index_to_field;
 mod convert_require;
 mod filter_early_return;
 mod group_local_assignment;
+mod inject_libraries;
 mod inject_value;
 mod no_local_function;
 mod remove_assertions;
