@@ -247,6 +247,7 @@ mod test {
                     path: "task.luau"
                 }
             ],
+			path: "something",
             prop: "something",
         }"#,
         );
