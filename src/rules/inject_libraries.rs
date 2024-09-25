@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
-use std::fs;
+use std::{fs, io};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::nodes::{
-    Arguments, Block, FunctionCall, LocalAssignStatement, Prefix, StringExpression, TypedIdentifier,
+    Arguments, Block, Expression, FunctionCall, LocalAssignStatement, Prefix, StringExpression, TypedIdentifier
 };
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
@@ -21,7 +21,7 @@ use pathdiff::diff_paths;
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct Library {
     name: String,
-    path: PathBuf,
+    path: Option<PathBuf>,
 }
 
 pub const INJECT_LIBRARIES_RULE_NAME: &str = "inject_libraries";
@@ -46,21 +46,49 @@ impl Default for InjectLibraries {
     }
 }
 
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
 fn get_require_path(libs_path: &Path, path: &Path, context: &Context) -> PathBuf {
     let lib_file_stem = path
         .file_stem()
         .map(|x| OsString::from(x).into_string().unwrap())
         .unwrap();
-    let lib_file_ext = path
-        .extension()
-        .map(|x| OsString::from(x).into_string().unwrap())
-        .unwrap();
+    let is_lib_dir = path.is_dir();
+    let lib_file_ext: Option<String> = if is_lib_dir {
+        None
+    } else {
+        path
+            .extension()
+            .map(|x| OsString::from(x).into_string().unwrap())
+    };
 
     let hash = blake3::hash(path.to_string_lossy().as_bytes());
     let hash_hex = hex::encode(&hash.as_bytes()[..8]);
 
-    let lib_path = libs_path.join(format!("{}{}.{}", lib_file_stem, hash_hex, lib_file_ext));
-    fs::copy(path, lib_path.as_path()).unwrap();
+    let lib_path = if let Some(ext) = lib_file_ext {
+        libs_path.join(format!("{}{}.{}", lib_file_stem, hash_hex, ext))
+    } else {
+        libs_path.join(lib_file_stem + hash_hex.as_str())
+    };
+
+    if is_lib_dir {
+        copy_dir_all(path, lib_path.as_path()).unwrap();
+    } else {
+        fs::copy(path, lib_path.as_path()).unwrap();
+    }
+    
     let base_path = context
         .path
         .as_path()
@@ -83,16 +111,22 @@ impl Rule for InjectLibraries {
         match self.require_mode.to_owned() {
             RequireMode::Path(_) => {
                 for lib in &self.libraries {
-                    let string_exp = StringExpression::from_value(
-                        get_require_path(&libs_path, &lib.path, context).to_slash_lossy(),
-                    );
-                    let require_arg = Arguments::String(string_exp);
+                    let exp: Expression = if let Some(lib_path) = lib.path.to_owned() {
+                        let string_exp = StringExpression::from_value(
+                            get_require_path(&libs_path, &lib_path, context).to_slash_lossy(),
+                        );
+                        let require_arg = Arguments::String(string_exp);
 
-                    let require_call =
-                        FunctionCall::new(Prefix::from_name("require"), require_arg, None);
+                        let require_call =
+                            FunctionCall::new(Prefix::from_name("require"), require_arg, None);
+
+                        require_call.into()
+                    } else {
+                        Expression::nil()
+                    };
                     let local_assignment = LocalAssignStatement::new(
                         vec![TypedIdentifier::new(lib.name.as_str())],
-                        vec![require_call.into()],
+                        vec![exp],
                     );
                     block.insert_statement(0, local_assignment);
                 }
@@ -102,23 +136,35 @@ impl Rule for InjectLibraries {
                     .initialize(context)
                     .map_err(|err| err.to_string())?;
                 for lib in &self.libraries {
-                    let require_path = get_require_path(&libs_path, &lib.path, context);
-                    if let Some(require_arg) = require_mode
-                        .generate_require(
-                            require_path.as_path(),
-                            &RequireMode::Path(PathRequireMode::new(require_path.to_slash_lossy())),
-                            context,
-                        )
-                        .unwrap()
-                    {
-                        let require_call =
-                            FunctionCall::new(Prefix::from_name("require"), require_arg, None);
-                        let local_assignment = LocalAssignStatement::new(
-                            vec![TypedIdentifier::new(lib.name.as_str())],
-                            vec![require_call.into()],
-                        );
-                        block.insert_statement(0, local_assignment);
-                    }
+                    let exp: Option<Expression> = if let Some(lib_path) = lib.path.to_owned() {
+                        let require_path = get_require_path(&libs_path, &lib_path, context);
+                        if let Some(require_arg) = require_mode
+                            .generate_require(
+                                require_path.as_path(),
+                                &RequireMode::Path(PathRequireMode::new(require_path.to_slash_lossy())),
+                                context,
+                            )
+                            .unwrap()
+                        {
+                            let require_call =
+                                FunctionCall::new(Prefix::from_name("require"), require_arg, None);
+
+                            Some(require_call.into())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                    let value = match exp {
+                        Some(exp) => exp,
+                        None => Expression::nil()
+                    };
+                    let local_assignment = LocalAssignStatement::new(
+                        vec![TypedIdentifier::new(lib.name.as_str())],
+                        vec![value],
+                    );
+                    block.insert_statement(0, local_assignment);
                 }
             }
         }
@@ -128,7 +174,7 @@ impl Rule for InjectLibraries {
 
 impl RuleConfiguration for InjectLibraries {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        verify_required_properties(&properties, &["require_mode", "libraries"])?;
+        verify_required_properties(&properties, &["require_mode", "libraries", "path"])?;
 
         for (key, value) in properties {
             match key.as_str() {
