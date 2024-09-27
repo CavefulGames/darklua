@@ -26,9 +26,8 @@ expression: rule_names
   "remove_unused_variable",
   "remove_unused_while",
   "rename_variables",
-  "remove_redeclared_keys",
   "remove_generalized_iteration",
-  "inject_libraries",
+  "remove_redeclared_keys",
   "inject_libraries",
   "remove_continue",
   "remove_if_expression"

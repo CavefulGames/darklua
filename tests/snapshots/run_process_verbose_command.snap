@@ -2,7 +2,8 @@
 source: tests/cli.rs
 expression: content
 ---
+successfully processed 1 file (in {{DURATION}})
+
  INFO > using default configuration
-thread 'main' panicked at src/rules/inject_libraries.rs:80:14:
-Project path is required
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ INFO > successfully processed `src/init.lua`
+ INFO > executed work in {{DURATION}}
