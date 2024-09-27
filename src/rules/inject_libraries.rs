@@ -196,7 +196,7 @@ impl Rule for InjectLibraries {
 
 impl RuleConfiguration for InjectLibraries {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        verify_required_properties(&properties, &["require_mode", "libraries", "path"])?;
+        verify_required_properties(&properties, &["require_mode", "libraries"])?;
 
         for (key, value) in properties {
             match key.as_str() {
