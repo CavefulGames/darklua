@@ -11,10 +11,11 @@ test_rule!(
     redeclared_value_and_index("local a = {1,[1]='A'}") => "local a = {'A'}",
     redeclared_field_and_index("local a = {x=1,['x']=2}") => "local a = {['x']=2}",
     redeclared_string_indexes("local a = {['x']=1,['x']=2}") => "local a = {['x']=2}",
+	redeclared_string_fields("local a = {x=1,x=2}") => "local a = {x=2}",
     redeclared_numeric_indexes("local a = {[1]='A',[1]='B'}") => "local a = {'B'}",
     redeclared_values_and_indexes_special("local a = {1,2,3,[3]='A',[4]='B',[6]='C',[7]='D'}")
         => "local a = {1,2,'A','B',[6]='C',[7]='D'}",
-    redeclared_side_effects("local a = {1,[f()]='A'}") => "local a = (function() local tbl = {1} tbl[f()] = 'A' return tbl end)()"
+    redeclared_side_effects("local a = {1,[f()]='A'}") => "local a = (function() local tbl = {1} tbl[f()] = 'A' return tbl end)()",
 );
 
 #[test]
