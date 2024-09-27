@@ -172,7 +172,7 @@ impl Rule for RemoveRedeclaredKeys {
             self.runtime_variable_format.as_str(),
             format!("{block:?}").as_bytes(),
             None,
-        );
+        )?;
         let mut processor = Processor {
             evaluator: Evaluator::default(),
             table_variable_name: var_builder.build("tbl")?,
