@@ -5,8 +5,7 @@ use std::str::FromStr;
 use std::{fs, io};
 
 use crate::nodes::{
-    Arguments, Block, Expression, FunctionCall, LocalAssignStatement, Prefix, StringExpression,
-    TypedIdentifier,
+    Arguments, Block, Expression, FieldExpression, FunctionCall, Identifier, LocalAssignStatement, Prefix, StringExpression, TypedIdentifier
 };
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
@@ -23,6 +22,7 @@ use pathdiff::diff_paths;
 pub struct Library {
     name: String,
     path: Option<PathBuf>,
+    index: Option<String>
 }
 
 pub const INJECT_LIBRARIES_RULE_NAME: &str = "inject_libraries";
@@ -127,7 +127,14 @@ impl Rule for InjectLibraries {
                         let require_call =
                             FunctionCall::new(Prefix::from_name("require"), require_arg, None);
 
-                        require_call.into()
+                        if let Some(index) = &lib.index {
+                            FieldExpression::new(
+                                Prefix::Call(require_call),
+                                Identifier::new(index)
+                            ).into()
+                        } else {
+                            require_call.into()
+                        }
                     } else {
                         Expression::nil()
                     };
@@ -158,7 +165,14 @@ impl Rule for InjectLibraries {
                             let require_call =
                                 FunctionCall::new(Prefix::from_name("require"), require_arg, None);
 
-                            Some(require_call.into())
+                            if let Some(index) = &lib.index {
+                                Some(FieldExpression::new(
+                                    Prefix::Call(require_call),
+                                    Identifier::new(index)
+                                ).into())
+                            } else {
+                                Some(require_call.into())
+                            }
                         } else {
                             None
                         }
@@ -247,7 +261,7 @@ mod test {
                     path: "task.luau"
                 }
             ],
-			path: "something",
+            path: "something",
             prop: "something",
         }"#,
         );
