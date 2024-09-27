@@ -111,13 +111,12 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> 
 
 impl Rule for InjectLibraries {
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
-        let project_path = context
-            .project_location
-            .as_ref()
-            .unwrap_or(
-                &self.project_path.as_ref()
-                .expect("Project path is required")
-            );
+        let project_path = context.project_location.as_ref().unwrap_or(
+            &self
+                .project_path
+                .as_ref()
+                .expect("Project path is required"),
+        );
         let libs_path = project_path.join(self.path.as_path());
         fs::create_dir_all(&libs_path).unwrap();
         match self.require_mode.to_owned() {
