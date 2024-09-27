@@ -72,12 +72,13 @@ test_rule!(
         require_mode: {
             name: "path"
         },
+		path: "injected",
+        no_hash: true,
         libraries: [
             {
                 name: "buffer",
             }
-        ],
-		path: 'something'
+        ]
     }"#,
     ).unwrap(),
     resources = memory_resources!(
@@ -100,9 +101,4 @@ fn deserialize_from_object_notation() {
     }"#,
     )
     .unwrap();
-}
-
-#[test]
-fn deserialize_from_string() {
-    json5::from_str::<Box<dyn Rule>>("'inject_libraries'").unwrap();
 }
