@@ -24,6 +24,7 @@ mod remove_generalized_iteration;
 mod remove_if_expression;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
+mod remove_redeclared_keys;
 mod remove_spaces;
 mod remove_types;
 mod remove_unused_variable;
@@ -35,7 +36,6 @@ pub(crate) mod runtime_variable;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
-mod remove_duplicated_keys;
 
 pub use append_text_comment::*;
 pub use call_parens::*;
@@ -59,6 +59,7 @@ pub use remove_generalized_iteration::*;
 pub use remove_if_expression::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
+pub use remove_redeclared_keys::*;
 pub use remove_spaces::*;
 pub use remove_types::*;
 pub use remove_unused_variable::*;
@@ -68,7 +69,6 @@ pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
-pub use remove_duplicated_keys::*;
 
 use crate::nodes::Block;
 use crate::Resources;
@@ -226,7 +226,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
         Box::<RemoveGeneralizedIteration>::default(),
-		Box::<RemoveDuplicatedKeys>::default(),
+        Box::<RemoveRedeclaredKeys>::default(),
         Box::<InjectLibraries>::default(),
         Box::<RemoveContinue>::default(),
         Box::<RemoveIfExpression>::default(),
@@ -259,7 +259,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
         REMOVE_GENERALIZED_ITERATION_RULE_NAME,
-		REMOVE_DUPLICATED_KEYS_RULE_NAME,
+        REMOVE_REDECLARED_KEYS_RULE_NAME,
         INJECT_LIBRARIES_RULE_NAME,
         REMOVE_CONTINUE_RULE_NAME,
         REMOVE_IF_EXPRESSION_RULE_NAME,
@@ -297,7 +297,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             REMOVE_GENERALIZED_ITERATION_RULE_NAME => Box::<RemoveGeneralizedIteration>::default(),
-			REMOVE_DUPLICATED_KEYS_RULE_NAME => Box::<RemoveDuplicatedKeys>::default(),
+            REMOVE_REDECLARED_KEYS_RULE_NAME => Box::<RemoveRedeclaredKeys>::default(),
             INJECT_LIBRARIES_RULE_NAME => Box::<InjectLibraries>::default(),
             REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
             REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
