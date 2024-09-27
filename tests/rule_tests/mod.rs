@@ -307,6 +307,7 @@ mod remove_empty_do;
 mod remove_interpolated_string;
 mod remove_method_definition;
 mod remove_nil_declaration;
+mod remove_redeclared_keys;
 mod remove_types;
 mod remove_unused_if_branch;
 mod remove_unused_variable;

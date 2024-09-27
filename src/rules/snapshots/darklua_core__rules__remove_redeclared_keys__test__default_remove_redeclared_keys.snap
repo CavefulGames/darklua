@@ -1,0 +1,5 @@
+---
+source: src/rules/remove_redeclared_keys.rs
+expression: rule
+---
+"remove_redeclared_keys"

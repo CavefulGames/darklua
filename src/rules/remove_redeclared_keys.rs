@@ -1,7 +1,7 @@
 use crate::nodes::{
     AssignStatement, Block, Expression, FunctionCall, FunctionExpression, Identifier,
     IndexExpression, LocalAssignStatement, ParentheseExpression, ReturnStatement, Statement,
-    TableEntry, TableExpression,
+    StringExpression, TableEntry, TableExpression,
 };
 use crate::process::{DefaultVisitor, Evaluator, LuaValue, NodeProcessor, NodeVisitor};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
@@ -33,13 +33,13 @@ impl NodeProcessor for Processor {
                 return;
             }
             let entries = table_exp.mutate_entries();
-            let mut table = HashMap::new();
+            let mut numeral_table = HashMap::new();
+            let mut str_table = HashMap::new();
             let mut num_index: usize = 0;
             let mut side_effect_stmts: Vec<Statement> = Vec::new();
-            let mut to_remove: Vec<usize> = Vec::new();
 
-            for i in 0..entries.len() {
-                match &entries[i] {
+            for (i, entry) in entries.iter().enumerate() {
+                match entry {
                     TableEntry::Index(index_entry) => {
                         let value = self.evaluator.evaluate(index_entry.get_key());
                         match value {
@@ -47,10 +47,7 @@ impl NodeProcessor for Processor {
                                 if lua_index.fract() == 0.0 && lua_index > 0.0 {
                                     let key = (lua_index as usize) - 1;
                                     if side_effect_stmts.is_empty() {
-                                        if let Some(a) = table.get(&key) {
-                                            to_remove.push(*a);
-                                        }
-                                        table.insert(key, i);
+                                        numeral_table.insert(key, i);
                                     } else {
                                         let assignment = AssignStatement::from_variable(
                                             IndexExpression::new(
@@ -63,6 +60,20 @@ impl NodeProcessor for Processor {
                                     }
                                 }
                             }
+                            LuaValue::String(key) => {
+                                if side_effect_stmts.is_empty() {
+                                    str_table.insert(key, i);
+                                } else {
+                                    let assignment = AssignStatement::from_variable(
+                                        IndexExpression::new(
+                                            Identifier::new(self.table_variable_name.as_str()),
+                                            StringExpression::from_value(key),
+                                        ),
+                                        index_entry.get_value().clone(),
+                                    );
+                                    side_effect_stmts.push(assignment.into());
+                                }
+                            }
                             LuaValue::Unknown => {
                                 let assignment = AssignStatement::from_variable(
                                     IndexExpression::new(
@@ -72,45 +83,47 @@ impl NodeProcessor for Processor {
                                     index_entry.get_value().clone(),
                                 );
                                 side_effect_stmts.push(assignment.into());
-                                to_remove.push(i);
                             }
                             _ => (),
                         }
                     }
                     TableEntry::Value(_) => {
-                        if let Some(a) = table.get(&num_index) {
-                            to_remove.push(*a);
-                        }
-                        table.insert(num_index, i);
+                        numeral_table.insert(num_index, i);
                         num_index += 1;
                     }
-                    _ => (),
+                    TableEntry::Field(field_entry) => {
+                        let key = field_entry.get_field().get_name();
+                        str_table.insert(key.to_owned(), i);
+                    }
                 }
             }
 
-            let mut keys: Vec<_> = table.keys().collect();
+            let mut keys: Vec<_> = numeral_table.keys().collect();
             keys.sort();
             let mut new_entries: Vec<TableEntry> = Vec::new();
 
             for i in keys {
-                let v = table.get(i);
-                if let Some(v) = v {
-                    let entry = &entries[*v];
-                    let new_entry = match entry {
-                        TableEntry::Index(index_entry) => {
-                            if *i <= num_index {
-                                Some(TableEntry::Value(index_entry.get_value().clone()))
-                            } else {
-                                Some(TableEntry::Index(index_entry.clone()))
-                            }
+                let v = numeral_table[i];
+                let entry = &entries[v];
+                let new_entry = match entry {
+                    TableEntry::Index(index_entry) => {
+                        if *i <= num_index {
+                            Some(TableEntry::Value(index_entry.get_value().clone()))
+                        } else {
+                            Some(TableEntry::Index(index_entry.clone()))
                         }
-                        TableEntry::Value(exp) => Some(TableEntry::Value(exp.clone())),
-                        _ => None,
-                    };
-                    if let Some(new_entry) = new_entry {
-                        new_entries.push(new_entry);
                     }
+                    TableEntry::Value(exp) => Some(TableEntry::Value(exp.clone())),
+                    _ => None,
+                };
+                if let Some(new_entry) = new_entry {
+                    new_entries.push(new_entry);
                 }
+            }
+
+            for (_, v) in str_table {
+                let entry = &entries[v];
+                new_entries.push(entry.clone());
             }
 
             entries.clear();
@@ -137,23 +150,23 @@ impl NodeProcessor for Processor {
     }
 }
 
-pub const REMOVE_DUPLICATED_KEYS_RULE_NAME: &str = "remove_duplicated_keys";
+pub const REMOVE_REDECLARED_KEYS_RULE_NAME: &str = "remove_redeclared_keys";
 
-/// A rule that removes duplicated keys in table
+/// A rule that removes redeclared keys in table and organize the components of a mixed table
 #[derive(Debug, PartialEq, Eq)]
-pub struct RemoveDuplicatedKeys {
+pub struct RemoveRedeclaredKeys {
     runtime_variable_format: String,
 }
 
-impl Default for RemoveDuplicatedKeys {
+impl Default for RemoveRedeclaredKeys {
     fn default() -> Self {
         Self {
-            runtime_variable_format: "_DARKLUA_REMOVE_DUPLICATED_KEYS_{name}{hash}".to_string(),
+            runtime_variable_format: "_DARKLUA_REMOVE_REDECLARED_KEYS_{name}{hash}".to_string(),
         }
     }
 }
 
-impl Rule for RemoveDuplicatedKeys {
+impl Rule for RemoveRedeclaredKeys {
     fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
         let var_builder = RuntimeVariableBuilder::new(
             self.runtime_variable_format.as_str(),
@@ -170,7 +183,7 @@ impl Rule for RemoveDuplicatedKeys {
     }
 }
 
-impl RuleConfiguration for RemoveDuplicatedKeys {
+impl RuleConfiguration for RemoveRedeclaredKeys {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
@@ -185,7 +198,7 @@ impl RuleConfiguration for RemoveDuplicatedKeys {
     }
 
     fn get_name(&self) -> &'static str {
-        REMOVE_DUPLICATED_KEYS_RULE_NAME
+        REMOVE_REDECLARED_KEYS_RULE_NAME
     }
 
     fn serialize_to_properties(&self) -> RuleProperties {
@@ -200,22 +213,23 @@ mod test {
 
     use insta::assert_json_snapshot;
 
-    fn new_rule() -> RemoveDuplicatedKeys {
-        RemoveDuplicatedKeys::default()
+    fn new_rule() -> RemoveRedeclaredKeys {
+        RemoveRedeclaredKeys::default()
     }
 
     #[test]
     fn serialize_default_rule() {
         let rule: Box<dyn Rule> = Box::new(new_rule());
 
-        assert_json_snapshot!("default_remove_duplicated_keys", rule);
+        assert_json_snapshot!("default_remove_redeclared_keys", rule);
     }
 
     #[test]
     fn configure_with_extra_field_error() {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
-            rule: 'remove_duplicated_keys',
+            rule: 'remove_redeclared_keys',
+            runtime_variable_format: '{name}',
             prop: "something",
         }"#,
         );

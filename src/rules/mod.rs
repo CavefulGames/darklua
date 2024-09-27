@@ -18,9 +18,9 @@ mod remove_call_match;
 mod remove_comments;
 mod remove_compound_assign;
 mod remove_debug_profiling;
-mod remove_duplicated_keys;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
+mod remove_redeclared_keys;
 mod remove_spaces;
 mod remove_types;
 mod remove_unused_variable;
@@ -49,9 +49,9 @@ pub use remove_assertions::*;
 pub use remove_comments::*;
 pub use remove_compound_assign::*;
 pub use remove_debug_profiling::*;
-pub use remove_duplicated_keys::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
+pub use remove_redeclared_keys::*;
 pub use remove_spaces::*;
 pub use remove_types::*;
 pub use remove_unused_variable::*;
@@ -217,7 +217,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveNilDeclaration>::default(),
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
-        Box::<RemoveDuplicatedKeys>::default(),
+        Box::<RemoveRedeclaredKeys>::default(),
     ]
 }
 
@@ -246,7 +246,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_VARIABLE_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
-        REMOVE_DUPLICATED_KEYS_RULE_NAME,
+        REMOVE_REDECLARED_KEYS_RULE_NAME,
     ]
 }
 
@@ -280,7 +280,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
-            REMOVE_DUPLICATED_KEYS_RULE_NAME => Box::<RemoveDuplicatedKeys>::default(),
+            REMOVE_REDECLARED_KEYS_RULE_NAME => Box::<RemoveRedeclaredKeys>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
