@@ -35,6 +35,19 @@ pub struct InjectLibraries {
     libraries: Vec<Library>,
     path: PathBuf,
     no_hash: bool,
+    project_path: Option<PathBuf>,
+}
+
+impl Default for InjectLibraries {
+    fn default() -> Self {
+        Self {
+            require_mode: RequireMode::Path(Default::default()),
+            libraries: Vec::new(),
+            path: PathBuf::from_str(DEFAULT_LIBRARIES_PATH).unwrap(),
+            no_hash: false,
+            project_path: None,
+        }
+    }
 }
 
 impl InjectLibraries {
@@ -82,17 +95,6 @@ impl InjectLibraries {
     }
 }
 
-impl Default for InjectLibraries {
-    fn default() -> Self {
-        Self {
-            require_mode: RequireMode::Path(Default::default()),
-            libraries: Vec::new(),
-            path: PathBuf::from_str(DEFAULT_LIBRARIES_PATH).unwrap(),
-            no_hash: false,
-        }
-    }
-}
-
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
     fs::create_dir_all(&dst)?;
     for entry in fs::read_dir(src)? {
@@ -112,7 +114,10 @@ impl Rule for InjectLibraries {
         let project_path = context
             .project_location
             .as_ref()
-            .expect("Project path is required");
+            .unwrap_or(
+                &self.project_path.as_ref()
+                .expect("Project path is required")
+            );
         let libs_path = project_path.join(self.path.as_path());
         fs::create_dir_all(&libs_path).unwrap();
         match self.require_mode.to_owned() {
@@ -214,6 +219,9 @@ impl RuleConfiguration for InjectLibraries {
                 }
                 "no_hash" => {
                     self.no_hash = value.expect_bool(&key)?;
+                }
+                "project_path" => {
+                    self.project_path = Some(PathBuf::from(value.expect_string(&key)?));
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
