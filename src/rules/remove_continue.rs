@@ -1,22 +1,14 @@
 use std::fmt::Debug;
 
 use crate::nodes::{
-    AssignStatement, Block, Expression, Identifier, IfStatement, LastStatement,
-    LocalAssignStatement, RepeatStatement, Statement, TypedIdentifier, UnaryExpression,
-    UnaryOperator, Variable,
+    AssignStatement, Block, Expression, IfStatement, LastStatement, LocalAssignStatement,
+    RepeatStatement, Statement, TypedIdentifier, UnaryExpression, UnaryOperator, Variable,
 };
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
-use crate::rules::{
-    Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties,
-};
+use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
-use super::verify_no_rule_properties;
-
-use blake3;
-use hex;
-
-const BREAK_VARIABLE_NAME: &str = "__DARKLUA_REMOVE_CONTINUE_break";
-const CONTINUE_VARIABLE_NAME: &str = "__DARKLUA_REMOVE_CONTINUE_continue";
+use super::runtime_variable::RuntimeVariableBuilder;
+use super::{Rule, RuleProcessResult};
 
 #[derive(Default)]
 struct Processor {
@@ -47,14 +39,14 @@ fn count_continue_break(block: &Block) -> (usize, usize) {
             Statement::If(if_stmt) => {
                 for branch in if_stmt.iter_branches() {
                     let (c, b) = count_continue_break(branch.get_block());
-                    continue_count = continue_count + c;
-                    break_count = break_count + b;
+                    continue_count += c;
+                    break_count += b;
                 }
             }
             Statement::Do(do_stmt) => {
                 let (c, b) = count_continue_break(do_stmt.get_block());
-                continue_count = continue_count + c;
-                break_count = break_count + b;
+                continue_count += c;
+                break_count += b;
             }
             _ => {}
         }
@@ -89,27 +81,30 @@ impl Processor {
 
         if continue_count > 0 {
             let (mut stmts, break_variable_handler) = if break_count > 0 {
-                let var = TypedIdentifier::new(self.break_variable_name.as_str());
-                let value = Expression::False(None);
-                let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![value]);
-
                 let with_continue_statement = continue_count < break_count;
                 let break_block = Block::new(vec![], Some(LastStatement::new_break()));
-                let break_variable_handler = if with_continue_statement {
-                    IfStatement::create(
-                        UnaryExpression::new(
-                            UnaryOperator::Not,
-                            Identifier::new(self.continue_variable_name.as_str()),
+                let (break_variable_handler, var) = if with_continue_statement {
+                    let var = TypedIdentifier::new(self.continue_variable_name.as_str());
+                    (
+                        IfStatement::create(
+                            UnaryExpression::new(UnaryOperator::Not, var.get_identifier().clone()),
+                            break_block,
                         ),
-                        break_block,
+                        var,
                     )
                 } else {
-                    IfStatement::create(
-                        Identifier::new(self.break_variable_name.as_str()),
-                        break_block,
+                    let var = TypedIdentifier::new(self.break_variable_name.as_str());
+                    (
+                        IfStatement::create(var.get_identifier().clone(), break_block),
+                        var,
                     )
                 };
+
                 self.continues_with_breaks_to_breaks(block, with_continue_statement);
+
+                let initial_value = Expression::False(None);
+                let local_assign_stmt = LocalAssignStatement::new(vec![var], vec![initial_value]);
+
                 (vec![local_assign_stmt.into()], Some(break_variable_handler))
             } else {
                 continues_to_breaks(block);
@@ -186,26 +181,45 @@ impl NodeProcessor for Processor {
 pub const REMOVE_CONTINUE_RULE_NAME: &str = "remove_continue";
 
 /// A rule that removes continue statements and convert into breaks.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct RemoveContinue {}
+#[derive(Debug, PartialEq, Eq)]
+pub struct RemoveContinue {
+    runtime_variable_format: String,
+}
 
-impl FlawlessRule for RemoveContinue {
-    fn flawless_process(&self, block: &mut Block, _: &Context) {
-        let hash = blake3::hash(format!("{block:?}").as_bytes());
-        let hash_hex = hex::encode(&hash.as_bytes()[..8]);
-        let break_variable_name = BREAK_VARIABLE_NAME.to_string() + hash_hex.as_str();
-        let continue_variable_name = CONTINUE_VARIABLE_NAME.to_string() + hash_hex.as_str();
+impl Default for RemoveContinue {
+    fn default() -> Self {
+        Self {
+            runtime_variable_format: "__DARKLUA_REMOVE_CONTINUE_{name}{hash}".to_string(),
+        }
+    }
+}
+
+impl Rule for RemoveContinue {
+    fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
+        let var_builder = RuntimeVariableBuilder::new(
+            self.runtime_variable_format.as_str(),
+            format!("{block:?}").as_bytes(),
+            None,
+        )?;
         let mut processor = Processor {
-            break_variable_name,
-            continue_variable_name,
+            break_variable_name: var_builder.build("break")?,
+            continue_variable_name: var_builder.build("continue")?,
         };
         DefaultVisitor::visit_block(block, &mut processor);
+        Ok(())
     }
 }
 
 impl RuleConfiguration for RemoveContinue {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
-        verify_no_rule_properties(&properties)?;
+        for (key, value) in properties {
+            match key.as_str() {
+                "runtime_variable_format" => {
+                    self.runtime_variable_format = value.expect_string(&key)?;
+                }
+                _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
+            }
+        }
 
         Ok(())
     }
@@ -242,6 +256,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_continue',
+            runtime_variable_format: '{name}',
             prop: "something",
         }"#,
         );

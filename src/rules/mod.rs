@@ -30,6 +30,7 @@ mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
 mod rule_property;
+pub(crate) mod runtime_variable;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
