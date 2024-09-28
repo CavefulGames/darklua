@@ -28,7 +28,6 @@ expression: rule_names
   "rename_variables",
   "remove_generalized_iteration",
   "remove_redeclared_keys",
-  "inject_libraries",
   "remove_continue",
   "remove_if_expression"
 ]
