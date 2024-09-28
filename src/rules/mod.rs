@@ -10,7 +10,6 @@ mod convert_require;
 mod empty_do;
 mod filter_early_return;
 mod group_local;
-mod inject_libraries;
 mod inject_value;
 mod method_def;
 mod no_local_function;
@@ -46,7 +45,6 @@ pub use convert_require::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
 pub use group_local::*;
-pub use inject_libraries::*;
 pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
@@ -227,7 +225,6 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveFunctionCallParens>::default(),
         Box::<RemoveGeneralizedIteration>::default(),
         Box::<RemoveRedeclaredKeys>::default(),
-        Box::<InjectLibraries>::default(),
         Box::<RemoveContinue>::default(),
         Box::<RemoveIfExpression>::default(),
     ]
@@ -260,7 +257,6 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         RENAME_VARIABLES_RULE_NAME,
         REMOVE_GENERALIZED_ITERATION_RULE_NAME,
         REMOVE_REDECLARED_KEYS_RULE_NAME,
-        INJECT_LIBRARIES_RULE_NAME,
         REMOVE_CONTINUE_RULE_NAME,
         REMOVE_IF_EXPRESSION_RULE_NAME,
     ]
@@ -298,7 +294,6 @@ impl FromStr for Box<dyn Rule> {
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             REMOVE_GENERALIZED_ITERATION_RULE_NAME => Box::<RemoveGeneralizedIteration>::default(),
             REMOVE_REDECLARED_KEYS_RULE_NAME => Box::<RemoveRedeclaredKeys>::default(),
-            INJECT_LIBRARIES_RULE_NAME => Box::<InjectLibraries>::default(),
             REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
             REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),

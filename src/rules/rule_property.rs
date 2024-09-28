@@ -4,7 +4,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    require::PathRequireMode, Library, RequireMode, RobloxRequireMode, RuleConfigurationError,
+    require::PathRequireMode, RequireMode, RobloxRequireMode, RuleConfigurationError,
 };
 
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
@@ -20,7 +20,6 @@ pub enum RulePropertyValue {
     Float(f64),
     StringList(Vec<String>),
     RequireMode(RequireMode),
-    Libraries(Vec<Library>),
     None,
 }
 
@@ -85,17 +84,6 @@ impl RulePropertyValue {
             _ => Err(RuleConfigurationError::RequireModeExpected(key.to_owned())),
         }
     }
-
-    pub(crate) fn expect_libraries(
-        self,
-        key: &str,
-    ) -> Result<Vec<Library>, RuleConfigurationError> {
-        if let Self::Libraries(value) = self {
-            Ok(value)
-        } else {
-            Err(RuleConfigurationError::LibrariesExpected(key.to_owned()))
-        }
-    }
 }
 
 impl From<bool> for RulePropertyValue {
@@ -152,12 +140,6 @@ impl From<&RequireMode> for RulePropertyValue {
         Self::RequireMode(value.clone())
     }
 }
-
-// impl From<&Library> for RulePropertyValue {
-// 	fn from(value: &Library) -> Self {
-// 		Self::Library(value.clone())
-// 	}
-// }
 
 impl<T: Into<RulePropertyValue>> From<Option<T>> for RulePropertyValue {
     fn from(value: Option<T>) -> Self {
