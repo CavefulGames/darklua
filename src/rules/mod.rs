@@ -27,9 +27,11 @@ mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
 mod rule_property;
+pub(crate) mod runtime_variable;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
+mod inject_typechecker;
 
 pub use append_text_comment::*;
 pub use call_parens::*;
@@ -58,6 +60,7 @@ pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
+pub use inject_typechecker::*;
 
 use crate::nodes::Block;
 use crate::Resources;
@@ -242,6 +245,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_VARIABLE_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
+        INJECT_TYPECHECKER_RULE_NAME,
     ]
 }
 
@@ -275,6 +279,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
+            INJECT_TYPECHECKER_RULE_NAME => Box::<InjectTypechecker>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
