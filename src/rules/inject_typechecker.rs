@@ -72,7 +72,6 @@ impl NodeProcessor for Processor {
                     let stmt_argument = Arguments::with_argument(Arguments::default(), stmt_expression);
                     let stmt_type_of = FunctionCall::new(Prefix::from_name(self.use_typeof.as_str()), stmt_argument.clone(), None);
                     let stmt_string_expression = StringExpression::from_value(type_name.get_name());
-                    let mut stmt_if  = BinaryExpression::new(BinaryOperator::NotEqual, stmt_type_of.clone(), stmt_string_expression.clone());
 
                     let error_message = self.error_message.as_str();
                     let format_string_count = error_message.matches("{get_type}").count();
@@ -82,7 +81,7 @@ impl NodeProcessor for Processor {
                     format_str = str::replace(format_str.as_str(), "{get_type}", "%s");
 
                     let mut format_string_argument = Arguments::String(StringExpression::from_value(format_str));
-                    let format_typeof_call = stmt_type_of;
+                    let format_typeof_call = stmt_type_of.clone();
 
                     for _ in 1..format_string_count+1 {
                         format_string_argument = format_string_argument.clone().with_argument(Expression::Call(Box::new(format_typeof_call.clone())));
@@ -110,6 +109,8 @@ impl NodeProcessor for Processor {
                         if let Some(vec_typechecker) = &self.types {
                             for typechcker_type in vec_typechecker {
                                 if &typechcker_type.identifier != type_name.get_name() {
+                                    let new_block = Block::new(error_vec.clone(), option_last_statement.clone());
+                                    if_stmts.push(IfBranch::new(BinaryExpression::new(BinaryOperator::NotEqual, stmt_type_of.clone(), stmt_string_expression.clone()), new_block));
                                     continue;
                                 }
                                 // let mut use_method: bool = false;
@@ -121,18 +122,17 @@ impl NodeProcessor for Processor {
                                         if let Some(call) = typechcker_type.call.clone() {
                                             let identifier = typechcker_type.identifier.clone();
                                             let fn_call = FunctionCall::new(Prefix::from_name(call), stmt_argument.clone(), None);
-                                            stmt_if = BinaryExpression::new(BinaryOperator::NotEqual, fn_call, Expression::String(StringExpression::from_value(identifier)));
+
                                             let new_block = Block::new(error_vec.clone(), option_last_statement.clone());
-    
-                                            if_stmts.push(IfBranch::new(stmt_if, new_block));
+                                            if_stmts.push(IfBranch::new(BinaryExpression::new(BinaryOperator::NotEqual, fn_call, Expression::String(StringExpression::from_value(identifier))), new_block));
                                         }
                                     }
                                 } else if &typechcker_type.method != &None {
                                     // use method
                                     if let Some(method) = typechcker_type.method.clone() {
                                         let call = FunctionCall::new(Prefix::from_name(format!(" not {}", method)), stmt_argument.clone(), None);
+
                                         let new_block = Block::new(error_vec.clone(), option_last_statement.clone());
-    
                                         if_stmts.push(IfBranch::new(Expression::Call(Box::new(call)), new_block));
                                     }
                                 } else {
@@ -141,11 +141,10 @@ impl NodeProcessor for Processor {
                             }
                         }
                     } else {
-                        let new_block = Block::new(error_vec, option_last_statement);
-    
-                        if_stmts.push(IfBranch::new(stmt_if, new_block));
-                    }
+                        let new_block = Block::new(error_vec.clone(), option_last_statement.clone());
 
+                        if_stmts.push(IfBranch::new( BinaryExpression::new(BinaryOperator::NotEqual, stmt_type_of, stmt_string_expression.clone()), new_block));
+                    }
                 }
             }
         };
