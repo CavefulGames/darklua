@@ -3,12 +3,17 @@ use std::collections::HashMap;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use super::{require::PathRequireMode, RequireMode, RobloxRequireMode, RuleConfigurationError};
+use super::{
+    require::PathRequireMode, RequireMode, RobloxRequireMode, RuleConfigurationError, TypecheckerType,
+};
 
 pub type RuleProperties = HashMap<String, RulePropertyValue>;
 
 /// In order to be able to weakly-type the properties of any rule, this enum makes it possible to
 /// easily use serde to gather the value associated with a property.
+/// 
+
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged, rename_all = "snake_case")]
 pub enum RulePropertyValue {
@@ -18,6 +23,7 @@ pub enum RulePropertyValue {
     Float(f64),
     StringList(Vec<String>),
     RequireMode(RequireMode),
+    TypecheckerTypeList(Vec<TypecheckerType>),
     None,
 }
 
@@ -82,6 +88,17 @@ impl RulePropertyValue {
             _ => Err(RuleConfigurationError::RequireModeExpected(key.to_owned())),
         }
     }
+
+    pub(crate) fn expect_inject_typechecker_types(
+        self,
+        key: &str,
+    ) -> Result<Vec<TypecheckerType>, RuleConfigurationError> {
+        if let Self::TypecheckerTypeList(value) = self {
+            Ok(value)
+        } else {
+            Err(RuleConfigurationError::StringListExpected(key.to_owned()))
+        }
+    }
 }
 
 impl From<bool> for RulePropertyValue {
@@ -136,6 +153,12 @@ impl From<&RequireMode> for RulePropertyValue {
         }
 
         Self::RequireMode(value.clone())
+    }
+}
+
+impl From<Vec<TypecheckerType>> for RulePropertyValue {
+    fn from(value: Vec<TypecheckerType>) -> Self {
+        Self::TypecheckerTypeList(value)
     }
 }
 

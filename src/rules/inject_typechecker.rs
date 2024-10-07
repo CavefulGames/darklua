@@ -1,27 +1,35 @@
-use std::any::{Any, TypeId};
-use std::hash::Hash;
-
-use toml::Table;
+use log::error;
+use serde::{Deserialize, Serialize};
 
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::nodes::{Arguments, BinaryExpression, BinaryOperator, Block, Expression, FunctionCall, FunctionStatement, Identifier, IfBranch, IfStatement, LastStatement, Prefix, ReturnStatement, Statement, StringExpression, Type};
-use super::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties, RulePropertyValue};
+use super::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields, rename_all = "snake_case", tag = "name")]
+pub struct TypecheckerType {
+    identifier: String,
+    method: Option<String>,
+    call: Option<String>
+}
+
+#[derive(Debug)]
 struct Processor {
     use_typeof: String,
     return_errors: bool,
     error_message: String,
     error_call: String,
+    types: Option<Vec<TypecheckerType>>,
 }
 
 impl Processor {
-    pub fn new(use_typeof: String, return_errors: bool, error_message: String, error_call: String) -> Self {
+    pub fn new(use_typeof: String, return_errors: bool, error_message: String, error_call: String, types: Option<Vec<TypecheckerType>>) -> Self {
         Self {
             use_typeof: use_typeof,
             return_errors: return_errors,
             error_message: error_message,
             error_call: error_call,
+            types: types,
         }
     }
 }
@@ -64,7 +72,7 @@ impl NodeProcessor for Processor {
                     let stmt_argument = Arguments::with_argument(Arguments::default(), stmt_expression);
                     let stmt_type_of = FunctionCall::new(Prefix::from_name(self.use_typeof.as_str()), stmt_argument.clone(), None);
                     let stmt_string_expression = StringExpression::from_value(type_name.get_name());
-                    let stmt_if = BinaryExpression::new(BinaryOperator::NotEqual, stmt_type_of.clone(), stmt_string_expression);
+                    let mut stmt_if  = BinaryExpression::new(BinaryOperator::NotEqual, stmt_type_of.clone(), stmt_string_expression.clone());
 
                     let error_message = self.error_message.as_str();
                     let format_string_count = error_message.matches("{get_type}").count();
@@ -98,9 +106,46 @@ impl NodeProcessor for Processor {
                         option_last_statement = Some(last_statement);
                     }
                     
-                    let new_block = Block::new(error_vec, option_last_statement);
+                    if self.types != None {
+                        if let Some(vec_typechecker) = &self.types {
+                            for typechcker_type in vec_typechecker {
+                                if &typechcker_type.identifier != type_name.get_name() {
+                                    continue;
+                                }
+                                // let mut use_method: bool = false;
+                                if &typechcker_type.call != &None {
+                                    if &typechcker_type.method != &None {
+                                        error!("In the types setting, only one of call and method can be used.")
+                                    } else {
+                                        // use call
+                                        if let Some(call) = typechcker_type.call.clone() {
+                                            let identifier = typechcker_type.identifier.clone();
+                                            let fn_call = FunctionCall::new(Prefix::from_name(call), stmt_argument.clone(), None);
+                                            stmt_if = BinaryExpression::new(BinaryOperator::NotEqual, fn_call, Expression::String(StringExpression::from_value(identifier)));
+                                            let new_block = Block::new(error_vec.clone(), option_last_statement.clone());
+    
+                                            if_stmts.push(IfBranch::new(stmt_if, new_block));
+                                        }
+                                    }
+                                } else if &typechcker_type.method != &None {
+                                    // use method
+                                    if let Some(method) = typechcker_type.method.clone() {
+                                        let call = FunctionCall::new(Prefix::from_name(format!(" not {}", method)), stmt_argument.clone(), None);
+                                        let new_block = Block::new(error_vec.clone(), option_last_statement.clone());
+    
+                                        if_stmts.push(IfBranch::new(Expression::Call(Box::new(call)), new_block));
+                                    }
+                                } else {
+                                    error!("One of method and call must have a value.")
+                                }
+                            }
+                        }
+                    } else {
+                        let new_block = Block::new(error_vec, option_last_statement);
+    
+                        if_stmts.push(IfBranch::new(stmt_if, new_block));
+                    }
 
-                    if_stmts.push(IfBranch::new(stmt_if, new_block));
                 }
             }
         };
@@ -111,12 +156,13 @@ impl NodeProcessor for Processor {
 
 pub const INJECT_TYPECHECKER_RULE_NAME: &str = "inject_typechecker";
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct InjectTypechecker {
     use_typeof: String,
     return_errors: bool,
     error_message: String,
     error_call: String,
+    types: Option<Vec<TypecheckerType>>,
 }
 
 impl Default for InjectTypechecker {
@@ -126,13 +172,14 @@ impl Default for InjectTypechecker {
             return_errors: false,
             error_message: "invalid argument #{argument} to '{func_name}' ({original_type} expected, got {get_type})".to_string(),
             error_call: "".to_string(),
+            types: None,
         }
     }
 }
 
 impl FlawlessRule for InjectTypechecker {
     fn flawless_process(&self, block: &mut Block, _: &Context) {
-        let mut processor = Processor::new(self.use_typeof.clone(), self.return_errors, self.error_message.clone(), self.error_call.clone());
+        let mut processor = Processor::new(self.use_typeof.clone(), self.return_errors, self.error_message.clone(), self.error_call.clone(), self.types.clone()) ;
         DefaultVisitor::visit_block(block, &mut processor);
     }
 }
@@ -143,30 +190,24 @@ impl RuleConfiguration for InjectTypechecker {
         for (key, value) in properties {
             match key.as_str() {
                 "use_typeof" => {
-                    match value {
-                        RulePropertyValue::Boolean(use_typeof) => {
-                            if use_typeof {
-                                self.use_typeof = "typeof".to_string()
-                            } else {
-                                self.use_typeof = "type".to_string()
-                            }
-                        },
-                        _ => {},
-                    }
+                    self.use_typeof = if value.expect_bool(&key)? {
+                        "typeof".to_string()
+                    } else {
+                        "type".to_string()
+                    };
                 },
                 "return_errors" => {
                     self.return_errors = value.expect_bool(&key)?;
                 },   
                 "error_message" => {
+                    
                     self.error_message = value.expect_string(&key)?;
                 },
                 "error_call" => {
                     self.error_call = value.expect_string(&key)?;
                 },
                 "types" => {
-
-                    // 
-
+                    self.types = Some(value.expect_inject_typechecker_types(&key)?);
                 },
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
