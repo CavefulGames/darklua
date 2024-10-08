@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::process::{DefaultVisitor, NodeProcessor, NodeVisitor};
 use crate::nodes::{Arguments, BinaryExpression, BinaryOperator, Block, Expression, FunctionCall, FunctionStatement, Identifier, IfBranch, IfStatement, LastStatement, Prefix, ReturnStatement, Statement, StringExpression, Type};
+use crate::Parser;
 use super::{Context, FlawlessRule, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -46,16 +47,17 @@ impl NodeProcessor for Processor {
         // 특정 주석 조건
         // 인덱스된 함수에만 추가하는가? 옵션
 
-        // types: [
-        //   {
-        //       identifier: "Signal", // 만약 함수 파라매터 타입이 이거인가
-        //       method: "is", // signal:is()로 체크함
-        //       call: "type" // type(signal)로 체크함
-        //   }
-        // ]
+        // // types: [
+        // //   {
+        // //       identifier: "Signal", // 만약 함수 파라매터 타입이 이거인가
+        // //       method: "is", // signal:is()로 체크함
+        // //       call: "type" // type(signal)로 체크함
+        // //   }
+        // // ]
 
         // 문자열, 숫자 호환성 고려 & runtime variable
 
+        
         let mut if_stmts: Vec<IfBranch> = Vec::new();
         let mut index = 0;
         for stmt in fn_stmt.get_parameters() {
@@ -66,7 +68,26 @@ impl NodeProcessor for Processor {
                 } else {
                     None
                 };
-              
+
+                // let code = include_str!("../../tests/test_cases/spaces_and_comments.lua");
+
+                // let parser = Parser::default().preserve_tokens();
+
+                // let mut block = parser.parse(code).expect("unable to parse code");
+
+                // RemoveComments::default().flawless_process(
+                //     &mut block,
+                //     &ContextBuilder::new(".", &Resources::from_memory(), code).build(),
+                // );
+
+                // let mut generator = TokenBasedLuaGenerator::new(code);
+
+                // generator.write_block(&block);
+
+                // let code_output = &generator.into_string();
+
+                // insta::assert_snapshot!("remove_comments_in_code", code_output);
+                
                 if let Some(type_name) = type_name {
                     let stmt_expression = Expression::identifier(stmt.get_identifier().clone());
                     let stmt_argument = Arguments::with_argument(Arguments::default(), stmt_expression);
@@ -113,7 +134,6 @@ impl NodeProcessor for Processor {
                                     if_stmts.push(IfBranch::new(BinaryExpression::new(BinaryOperator::NotEqual, stmt_type_of.clone(), stmt_string_expression.clone()), new_block));
                                     continue;
                                 }
-                                // let mut use_method: bool = false;
                                 if &typechcker_type.call != &None {
                                     if &typechcker_type.method != &None {
                                         error!("In the types setting, only one of call and method can be used.")
@@ -199,7 +219,6 @@ impl RuleConfiguration for InjectTypechecker {
                     self.return_errors = value.expect_bool(&key)?;
                 },   
                 "error_message" => {
-                    
                     self.error_message = value.expect_string(&key)?;
                 },
                 "error_call" => {
