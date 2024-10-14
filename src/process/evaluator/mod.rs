@@ -330,7 +330,12 @@ impl Evaluator {
             BinaryOperator::GreaterThan => self.evaluate_relational(expression, |a, b| a > b),
             BinaryOperator::GreaterOrEqualThan => {
                 self.evaluate_relational(expression, |a, b| a >= b)
-            }
+            },
+            BinaryOperator::DoubleLowerThan => self.evaluate_math(expression, |a, b| ((a as u64) << (b as u64)) as f64),
+            BinaryOperator::DoubleGreaterThan => self.evaluate_math(expression, |a, b| ((a as u64) >> (b as u64)) as f64),
+            BinaryOperator::Ampersand => self.evaluate_math(expression, |a, b| ((a as u64) & (b as u64)) as f64),
+            BinaryOperator::Tilde => self.evaluate_math(expression, |a, b| ((a as u64) ^ (b as u64)) as f64),
+            BinaryOperator::Pipe => self.evaluate_math(expression, |a, b| ((a as u64) | (b as u64)) as f64)
         }
     }
 
@@ -424,7 +429,13 @@ impl Evaluator {
                     LuaValue::Number(value) => LuaValue::from(-value),
                     _ => LuaValue::Unknown,
                 }
-            }
+            },
+            UnaryOperator::Tilde => {
+                match self.evaluate(expression.get_expression()).number_coercion() {
+                    LuaValue::Number(value) => LuaValue::from(!(value as u64) as f64),
+                    _ => LuaValue::Unknown,
+                }
+            },
             _ => LuaValue::Unknown,
         }
     }

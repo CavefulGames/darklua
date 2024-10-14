@@ -2522,6 +2522,11 @@ impl<'a> AstConverter<'a> {
             ast::BinOp::TildeEqual(_) => BinaryOperator::NotEqual,
             ast::BinOp::TwoDots(_) => BinaryOperator::Concat,
             ast::BinOp::TwoEqual(_) => BinaryOperator::Equal,
+			ast::BinOp::DoubleLessThan(_) => BinaryOperator::DoubleLowerThan,
+            ast::BinOp::DoubleGreaterThan(_) => BinaryOperator::DoubleGreaterThan,
+            ast::BinOp::Ampersand(_) => BinaryOperator::Ampersand,
+            ast::BinOp::Tilde(_) => BinaryOperator::Tilde,
+            ast::BinOp::Pipe(_) => BinaryOperator::Pipe,
             _ => {
                 return Err(ConvertError::BinaryOperator {
                     operator: operator.to_string(),
@@ -2536,6 +2541,7 @@ impl<'a> AstConverter<'a> {
             ast::UnOp::Minus(_) => UnaryOperator::Minus,
             ast::UnOp::Not(_) => UnaryOperator::Not,
             ast::UnOp::Hash(_) => UnaryOperator::Length,
+			ast::UnOp::Tilde(_) => UnaryOperator::Tilde,
             _ => {
                 return Err(ConvertError::UnaryOperator {
                     operator: operator.to_string(),
@@ -3116,7 +3122,12 @@ fn get_binary_operator_token(
         | BinOp::Star(token)
         | BinOp::TildeEqual(token)
         | BinOp::TwoDots(token)
-        | BinOp::TwoEqual(token) => Ok(token),
+        | BinOp::TwoEqual(token)
+		| BinOp::DoubleLessThan(token)
+		| BinOp::DoubleGreaterThan(token)
+		| BinOp::Ampersand(token)
+		| BinOp::Tilde(token)
+		| BinOp::Pipe(token) => Ok(token),
         _ => Err(ConvertError::BinaryOperator {
             operator: operator.to_string(),
         }),
@@ -3129,7 +3140,7 @@ fn get_unary_operator_token(
     use ast::UnOp;
 
     match operator {
-        UnOp::Minus(token) | UnOp::Not(token) | UnOp::Hash(token) => Ok(token),
+        UnOp::Minus(token) | UnOp::Not(token) | UnOp::Hash(token) | UnOp::Tilde(token) => Ok(token),
         _ => Err(ConvertError::UnaryOperator {
             operator: operator.to_string(),
         }),

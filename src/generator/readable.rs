@@ -916,6 +916,7 @@ impl LuaGenerator for ReadableLuaGenerator {
             Length => self.push_char('#'),
             Minus => self.push_str_and_break_if("-", utils::break_minus),
             Not => self.push_str("not "),
+            Tilde => self.push_str("~"),
         }
 
         let expression = unary.get_expression();

@@ -685,6 +685,7 @@ impl LuaGenerator for DenseLuaGenerator {
             Length => self.push_char('#'),
             Minus => self.push_char_and_break_if('-', utils::break_minus),
             Not => self.push_str("not"),
+            Tilde => self.push_str("~"),
         }
 
         let expression = unary.get_expression();

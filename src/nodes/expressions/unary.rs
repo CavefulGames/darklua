@@ -5,6 +5,7 @@ pub enum UnaryOperator {
     Length,
     Minus,
     Not,
+    Tilde,
 }
 
 impl UnaryOperator {
@@ -13,6 +14,7 @@ impl UnaryOperator {
             Self::Length => "#",
             Self::Minus => "-",
             Self::Not => "not",
+            Self::Tilde => "~",
         }
     }
 }

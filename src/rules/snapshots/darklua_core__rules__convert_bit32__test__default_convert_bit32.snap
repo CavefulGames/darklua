@@ -1,0 +1,5 @@
+---
+source: src/rules/convert_bit32.rs
+expression: rule
+---
+"convert_bit32"

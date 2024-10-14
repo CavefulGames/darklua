@@ -18,6 +18,11 @@ pub enum BinaryOperator {
     Percent,
     Caret,
     Concat,
+    DoubleLowerThan,
+    DoubleGreaterThan,
+    Ampersand,
+    Tilde,
+    Pipe
 }
 
 #[inline]
@@ -178,6 +183,11 @@ impl BinaryOperator {
             Self::Percent => "%",
             Self::Caret => "^",
             Self::Concat => "..",
+            Self::DoubleLowerThan => "<<",
+            Self::DoubleGreaterThan => ">>",
+            Self::Ampersand => "&",
+            Self::Tilde => "~",
+            Self::Pipe => "|",
         }
     }
 
@@ -191,9 +201,14 @@ impl BinaryOperator {
             | Self::LowerOrEqualThan
             | Self::GreaterThan
             | Self::GreaterOrEqualThan => 2,
-            Self::Concat => 3,
-            Self::Plus | Self::Minus => 4,
-            Self::Asterisk | Self::Slash | Self::DoubleSlash | Self::Percent => 5,
+            Self::DoubleLowerThan
+            | Self::DoubleGreaterThan
+            | Self::Ampersand
+            | Self::Tilde
+            | Self::Pipe => 3,
+            Self::Concat => 4,
+            Self::Plus | Self::Minus => 5,
+            Self::Asterisk | Self::Slash | Self::DoubleSlash | Self::Percent => 6,
             Self::Caret => 7,
         }
     }
@@ -292,6 +307,11 @@ mod test {
             assert!(Caret.precedes(Concat));
             assert!(!Caret.precedes(Caret));
             assert!(Caret.precedes_unary_expression());
+            assert!(Caret.precedes(DoubleLowerThan));
+            assert!(Caret.precedes(DoubleGreaterThan));
+            assert!(Caret.precedes(Ampersand));
+            assert!(Caret.precedes(Tilde));
+            assert!(Caret.precedes(Pipe));
         }
 
         #[test]
@@ -313,6 +333,11 @@ mod test {
             assert!(Asterisk.precedes(Concat));
             assert!(!Asterisk.precedes(Caret));
             assert!(!Asterisk.precedes_unary_expression());
+            assert!(Asterisk.precedes(DoubleLowerThan));
+            assert!(Asterisk.precedes(DoubleGreaterThan));
+            assert!(Asterisk.precedes(Ampersand));
+            assert!(Asterisk.precedes(Tilde));
+            assert!(Asterisk.precedes(Pipe));
         }
 
         #[test]
@@ -334,6 +359,11 @@ mod test {
             assert!(Slash.precedes(Concat));
             assert!(!Slash.precedes(Caret));
             assert!(!Slash.precedes_unary_expression());
+            assert!(Slash.precedes(DoubleLowerThan));
+            assert!(Slash.precedes(DoubleGreaterThan));
+            assert!(Slash.precedes(Ampersand));
+            assert!(Slash.precedes(Tilde));
+            assert!(Slash.precedes(Pipe));
         }
 
         #[test]
@@ -355,6 +385,11 @@ mod test {
             assert!(Percent.precedes(Concat));
             assert!(!Percent.precedes(Caret));
             assert!(!Percent.precedes_unary_expression());
+            assert!(Percent.precedes(DoubleLowerThan));
+            assert!(Percent.precedes(DoubleGreaterThan));
+            assert!(Percent.precedes(Ampersand));
+            assert!(Percent.precedes(Tilde));
+            assert!(Percent.precedes(Pipe));
         }
 
         #[test]
@@ -376,6 +411,11 @@ mod test {
             assert!(Plus.precedes(Concat));
             assert!(!Plus.precedes(Caret));
             assert!(!Plus.precedes_unary_expression());
+            assert!(Plus.precedes(DoubleLowerThan));
+            assert!(Plus.precedes(DoubleGreaterThan));
+            assert!(Plus.precedes(Ampersand));
+            assert!(Plus.precedes(Tilde));
+            assert!(Plus.precedes(Pipe));
         }
 
         #[test]
@@ -397,6 +437,11 @@ mod test {
             assert!(Minus.precedes(Concat));
             assert!(!Minus.precedes(Caret));
             assert!(!Minus.precedes_unary_expression());
+            assert!(Minus.precedes(DoubleLowerThan));
+            assert!(Minus.precedes(DoubleGreaterThan));
+            assert!(Minus.precedes(Ampersand));
+            assert!(Minus.precedes(Tilde));
+            assert!(Minus.precedes(Pipe));
         }
 
         #[test]
@@ -418,6 +463,11 @@ mod test {
             assert!(!Concat.precedes(Concat));
             assert!(!Concat.precedes(Caret));
             assert!(!Concat.precedes_unary_expression());
+            assert!(Concat.precedes(DoubleLowerThan));
+            assert!(Concat.precedes(DoubleGreaterThan));
+            assert!(Concat.precedes(Ampersand));
+            assert!(Concat.precedes(Tilde));
+            assert!(Concat.precedes(Pipe));
         }
 
         #[test]
@@ -439,6 +489,11 @@ mod test {
             assert!(!And.precedes(Concat));
             assert!(!And.precedes(Caret));
             assert!(!And.precedes_unary_expression());
+            assert!(!And.precedes(DoubleLowerThan));
+            assert!(!And.precedes(DoubleGreaterThan));
+            assert!(!And.precedes(Ampersand));
+            assert!(!And.precedes(Tilde));
+            assert!(!And.precedes(Pipe));
         }
     }
 }
