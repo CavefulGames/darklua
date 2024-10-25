@@ -10,6 +10,7 @@ mod convert_require;
 mod empty_do;
 mod filter_early_return;
 mod group_local;
+mod inject_type_checker;
 mod inject_value;
 mod method_def;
 mod no_local_function;
@@ -27,11 +28,10 @@ mod rename_variables;
 mod replace_referenced_tokens;
 pub(crate) mod require;
 mod rule_property;
-pub(crate) mod runtime_variable;
+pub(crate) mod runtime_identifier;
 mod shift_token_line;
 mod unused_if_branch;
 mod unused_while;
-mod inject_typechecker;
 
 pub use append_text_comment::*;
 pub use call_parens::*;
@@ -42,6 +42,7 @@ pub use convert_require::*;
 pub use empty_do::*;
 pub use filter_early_return::*;
 pub use group_local::*;
+pub use inject_type_checker::*;
 pub use inject_value::*;
 pub use method_def::*;
 pub use no_local_function::*;
@@ -60,7 +61,6 @@ pub use rule_property::*;
 pub(crate) use shift_token_line::*;
 pub use unused_if_branch::*;
 pub use unused_while::*;
-pub use inject_typechecker::*;
 
 use crate::nodes::Block;
 use crate::Resources;
@@ -245,7 +245,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_VARIABLE_RULE_NAME,
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
-        INJECT_TYPECHECKER_RULE_NAME,
+        INJECT_TYPE_CHECKER_RULE_NAME,
     ]
 }
 
@@ -279,7 +279,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_VARIABLE_RULE_NAME => Box::<RemoveUnusedVariable>::default(),
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
-            INJECT_TYPECHECKER_RULE_NAME => Box::<InjectTypechecker>::default(),
+            INJECT_TYPE_CHECKER_RULE_NAME => Box::<InjectTypeChecker>::default(),
             _ => return Err(format!("invalid rule name: {}", string)),
         };
 
