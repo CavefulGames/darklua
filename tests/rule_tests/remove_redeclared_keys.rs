@@ -5,7 +5,7 @@ test_rule!(
     json5::from_str::<Box<dyn Rule>>(
         r#"{
             rule: 'remove_redeclared_keys',
-            runtime_variable_format: '{name}'
+            runtime_identifier_format: '{name}'
         }"#
     ).unwrap(),
     redeclared_value_and_index("local a = {1,[1]='A'}") => "local a = {'A'}",
@@ -23,7 +23,7 @@ fn deserialize_from_object_notation() {
     json5::from_str::<Box<dyn Rule>>(
         r#"{
         rule: 'remove_redeclared_keys',
-		runtime_variable_format: '{name}'
+		runtime_identifier_format: '{name}'
     }"#,
     )
     .unwrap();

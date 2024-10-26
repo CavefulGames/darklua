@@ -6,13 +6,13 @@ use crate::nodes::{
 use crate::process::{DefaultVisitor, Evaluator, LuaValue, NodeProcessor, NodeVisitor};
 use crate::rules::{Context, RuleConfiguration, RuleConfigurationError, RuleProperties};
 
-use super::runtime_variable::RuntimeVariableBuilder;
+use super::runtime_identifier::RuntimeIdentifierBuilder;
 use super::{Rule, RuleProcessResult};
 
 #[derive(Default)]
 struct Processor {
     evaluator: Evaluator,
-    table_variable_name: String,
+    table_identifier: String,
     skip_next_table_exp: bool,
 }
 
@@ -51,7 +51,7 @@ impl NodeProcessor for Processor {
                                     } else {
                                         let assignment = AssignStatement::from_variable(
                                             IndexExpression::new(
-                                                Identifier::new(self.table_variable_name.as_str()),
+                                                Identifier::new(self.table_identifier.as_str()),
                                                 key + 1,
                                             ),
                                             index_entry.get_value().clone(),
@@ -66,7 +66,7 @@ impl NodeProcessor for Processor {
                                 } else {
                                     let assignment = AssignStatement::from_variable(
                                         IndexExpression::new(
-                                            Identifier::new(self.table_variable_name.as_str()),
+                                            Identifier::new(self.table_identifier.as_str()),
                                             StringExpression::from_value(key),
                                         ),
                                         index_entry.get_value().clone(),
@@ -77,7 +77,7 @@ impl NodeProcessor for Processor {
                             LuaValue::Unknown => {
                                 let assignment = AssignStatement::from_variable(
                                     IndexExpression::new(
-                                        Identifier::new(self.table_variable_name.as_str()),
+                                        Identifier::new(self.table_identifier.as_str()),
                                         index_entry.get_key().clone(),
                                     ),
                                     index_entry.get_value().clone(),
@@ -132,7 +132,7 @@ impl NodeProcessor for Processor {
             }
 
             if !side_effect_stmts.is_empty() {
-                let var = Identifier::new(self.table_variable_name.as_str());
+                let var = Identifier::new(self.table_identifier.as_str());
                 let table_stmt = TableExpression::new(entries.clone());
                 self.skip(true);
                 let local_assign_stmt =
@@ -155,27 +155,27 @@ pub const REMOVE_REDECLARED_KEYS_RULE_NAME: &str = "remove_redeclared_keys";
 /// A rule that removes redeclared keys in table and organize the components of a mixed table
 #[derive(Debug, PartialEq, Eq)]
 pub struct RemoveRedeclaredKeys {
-    runtime_variable_format: String,
+    runtime_identifier_format: String,
 }
 
 impl Default for RemoveRedeclaredKeys {
     fn default() -> Self {
         Self {
-            runtime_variable_format: "_DARKLUA_REMOVE_REDECLARED_KEYS_{name}{hash}".to_string(),
+            runtime_identifier_format: "_DARKLUA_REMOVE_REDECLARED_KEYS_{name}{hash}".to_string(),
         }
     }
 }
 
 impl Rule for RemoveRedeclaredKeys {
     fn process(&self, block: &mut Block, _: &Context) -> RuleProcessResult {
-        let var_builder = RuntimeVariableBuilder::new(
-            self.runtime_variable_format.as_str(),
+        let var_builder = RuntimeIdentifierBuilder::new(
+            self.runtime_identifier_format.as_str(),
             format!("{block:?}").as_bytes(),
             None,
         )?;
         let mut processor = Processor {
             evaluator: Evaluator::default(),
-            table_variable_name: var_builder.build("tbl")?,
+            table_identifier: var_builder.build("tbl")?,
             skip_next_table_exp: false,
         };
         DefaultVisitor::visit_block(block, &mut processor);
@@ -187,8 +187,8 @@ impl RuleConfiguration for RemoveRedeclaredKeys {
     fn configure(&mut self, properties: RuleProperties) -> Result<(), RuleConfigurationError> {
         for (key, value) in properties {
             match key.as_str() {
-                "runtime_variable_format" => {
-                    self.runtime_variable_format = value.expect_string(&key)?;
+                "runtime_identifier_format" => {
+                    self.runtime_identifier_format = value.expect_string(&key)?;
                 }
                 _ => return Err(RuleConfigurationError::UnexpectedProperty(key)),
             }
@@ -229,7 +229,7 @@ mod test {
         let result = json5::from_str::<Box<dyn Rule>>(
             r#"{
             rule: 'remove_redeclared_keys',
-            runtime_variable_format: '{name}',
+            runtime_identifier_format: '{name}',
             prop: "something",
         }"#,
         );
