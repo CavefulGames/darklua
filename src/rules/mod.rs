@@ -20,6 +20,7 @@ mod remove_compound_assign;
 mod remove_continue;
 mod remove_debug_profiling;
 mod remove_if_expression;
+mod remove_generalized_iteration;
 mod remove_interpolated_string;
 mod remove_nil_declarations;
 mod remove_spaces;
@@ -52,6 +53,7 @@ pub use remove_compound_assign::*;
 pub use remove_continue::*;
 pub use remove_debug_profiling::*;
 pub use remove_if_expression::*;
+pub use remove_generalized_iteration::*;
 pub use remove_interpolated_string::*;
 pub use remove_nil_declarations::*;
 pub use remove_spaces::*;
@@ -219,6 +221,7 @@ pub fn get_default_rules() -> Vec<Box<dyn Rule>> {
         Box::<RemoveNilDeclaration>::default(),
         Box::<RenameVariables>::default(),
         Box::<RemoveFunctionCallParens>::default(),
+        Box::<RemoveGeneralizedIteration>::default(),
         Box::<RemoveContinue>::default(),
     ]
 }
@@ -249,6 +252,7 @@ pub fn get_all_rule_names() -> Vec<&'static str> {
         REMOVE_UNUSED_WHILE_RULE_NAME,
         RENAME_VARIABLES_RULE_NAME,
         REMOVE_IF_EXPRESSION_RULE_NAME,
+        REMOVE_GENERALIZED_ITERATION_RULE_NAME,
         REMOVE_CONTINUE_RULE_NAME,
     ]
 }
@@ -284,6 +288,7 @@ impl FromStr for Box<dyn Rule> {
             REMOVE_UNUSED_WHILE_RULE_NAME => Box::<RemoveUnusedWhile>::default(),
             RENAME_VARIABLES_RULE_NAME => Box::<RenameVariables>::default(),
             REMOVE_IF_EXPRESSION_RULE_NAME => Box::<RemoveIfExpression>::default(),
+            REMOVE_GENERALIZED_ITERATION_RULE_NAME => Box::<RemoveGeneralizedIteration>::default(),
             REMOVE_CONTINUE_RULE_NAME => Box::<RemoveContinue>::default(),
 
             _ => return Err(format!("invalid rule name: {}", string)),
