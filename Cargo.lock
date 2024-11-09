@@ -442,8 +442,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "darklua"
-version = "0.14.0"
+name = "darklua-demo"
+version = "3.0.0"
 dependencies = [
  "anstyle",
  "assert_cmd",

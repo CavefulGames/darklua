@@ -1,7 +1,7 @@
 [package]
-name = "darklua"
-version = "0.14.0"
-authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>"]
+name = "darklua-demo"
+version = "3.0.0"
+authors = ["jeparlefrancais <jeparlefrancais21@gmail.com>", "jiwonz"]
 edition = "2018"
 readme = "README.md"
 description = "Transform Lua scripts"
