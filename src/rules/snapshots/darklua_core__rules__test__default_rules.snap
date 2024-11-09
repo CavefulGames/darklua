@@ -16,6 +16,7 @@ expression: rules
   "remove_nil_declaration",
   "rename_variables",
   "remove_function_call_parens",
+  "remove_redeclared_keys",
   "remove_generalized_iteration",
   "remove_continue"
 ]
